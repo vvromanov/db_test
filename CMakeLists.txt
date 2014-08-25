@@ -51,6 +51,12 @@ target_link_libraries(${TARGET}_tt
     ${TT_DIR}/lib/libtten.so
 )
 
+add_executable(${TARGET}_my ${${TARGET}_SRCS})
+set_target_properties (${TARGET}_my PROPERTIES COMPILE_DEFINITIONS "MY")
+target_link_libraries(${TARGET}_my
+    /usr/lib64/libodbc.so.2
+)
+
 add_executable(${TARGET}_pq ${${TARGET}_SRCS})
 set_target_properties (${TARGET}_pq PROPERTIES COMPILE_DEFINITIONS "PQ")
 

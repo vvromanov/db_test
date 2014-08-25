@@ -5,7 +5,11 @@
 #include "test_utils.h"
 #include "test_dao.h"
 
+#ifdef MY
+#define DSN "dsn=mytest"
+#else
 #define DSN "dsn=test"
+#endif     
 SQLHENV henv = SQL_NULL_HENV;
 SQLHDBC hdbc = SQL_NULL_HDBC;
 SQLHSTMT stmt_direct = SQL_NULL_HSTMT;
@@ -71,15 +75,6 @@ void log_error(SQLRETURN rc, SQLHSTMT stmt = SQL_NULL_HSTMT) {
     }
 }
 
-static SQLCHAR* get_str(const char* tt_str, const char* pq_str) {
-#ifdef TT
-    return const_cast<SQLCHAR*> ((const SQLCHAR*) tt_str);
-#endif
-#ifdef PQ
-    return const_cast<SQLCHAR*> ((const SQLCHAR*) pq_str);
-#endif    
-}
-
 void db_execute_direct(const char* sql) {
     printf("Execute direct [%s] ... ", sql);
     fflush(stdout);
@@ -115,31 +110,38 @@ void db_prepare() {
     CHECK(SQLAllocStmt(hdbc, &stmt_update));
     CHECK(SQLAllocStmt(hdbc, &stmt_delete));
 
-    CHECK(SQLPrepare(stmt_insert, get_str(
+    CHECK(SQLPrepare(stmt_insert, (SQLCHAR*)get_str(
             "INSERT INTO bench (id, value) VALUES (:id, :value)",
-            "INSERT INTO bench (id, value) VALUES ($1, $2)"
+            "INSERT INTO bench (id, value) VALUES ($1, $2)",
+            "INSERT INTO bench (id, value) VALUES (?, ?)"
             ),
             SQL_NTS));
     CHECK(SQLBindParameter(stmt_insert, 1, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, &_id, 0, NULL));
     CHECK(SQLBindParameter(stmt_insert, 2, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, &_value, 0, NULL));
 
-    CHECK(SQLPrepare(stmt_select, get_str(
+    CHECK(SQLPrepare(stmt_select, (SQLCHAR*)get_str(
             "SELECT value FROM bench WHERE id=:id",
-            "SELECT value FROM bench WHERE id=$1"),
+            "SELECT value FROM bench WHERE id=$1",
+            "SELECT value FROM bench WHERE id=?"
+            ),
             SQL_NTS));
     CHECK(SQLBindParameter(stmt_select, 1, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, &_id, 0, NULL));
     CHECK(SQLBindCol(stmt_select, 1, SQL_C_SLONG, &_value, sizeof (_value), NULL));
 
-    CHECK(SQLPrepare(stmt_update, get_str(
+    CHECK(SQLPrepare(stmt_update, (SQLCHAR*)get_str(
             "UPDATE bench SET value=:value WHERE id=:id",
-            "UPDATE bench SET value=$1 WHERE id=$2"),
+            "UPDATE bench SET value=$1 WHERE id=$2",
+            "UPDATE bench SET value=? WHERE id=?"
+            ),
             SQL_NTS));
     CHECK(SQLBindParameter(stmt_update, 1, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, &_value, 0, NULL));
     CHECK(SQLBindParameter(stmt_update, 2, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, &_id, 0, NULL));
 
-    CHECK(SQLPrepare(stmt_delete, get_str(
+    CHECK(SQLPrepare(stmt_delete, (SQLCHAR*)get_str(
             "DELETE FROM bench WHERE id=:id",
-            "DELETE FROM bench WHERE id=$1"),
+            "DELETE FROM bench WHERE id=$1",
+            "DELETE FROM bench WHERE id=?"
+            ),
             SQL_NTS));
     CHECK(SQLBindParameter(stmt_delete, 1, SQL_PARAM_INPUT, SQL_C_LONG, SQL_INTEGER, 0, 0, &_id, 0, NULL));
 

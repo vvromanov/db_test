@@ -2,14 +2,17 @@
 #include <stdio.h>
 #include <stdint.h>
 
-#include "test_utils.h"
 #include "test_dao.h"
+#include "test_utils.h"
 
 #ifdef TT
 #define TEST_COUNT 5000000
 #endif
 #ifdef PQ
 #define TEST_COUNT 500000
+#endif
+#ifdef MY
+#define TEST_COUNT 50000
 #endif
 
 typedef struct {
@@ -32,6 +35,7 @@ static void select_func(uint64_t index) {
         if (exit_on_error) exit(EXIT_FAILURE);
     }
 }
+
 static void update_func(uint64_t index) {
     db_update(test_data[index].id, test_data[index].value + 1);
 }
@@ -42,7 +46,7 @@ static void delete_func(uint64_t index) {
 
 typedef void(*perf_func_t) (uint64_t index);
 
-static void bench(perf_func_t f, uint64_t count, const char* operation) {
+static void bench(perf_func_t f, uint64_t count, const char* operation, int32_t* cps) {
     int64_t start = getTimeMs();
     uint64_t step = count / 50;
     printf("    %s ", operation);
@@ -55,7 +59,8 @@ static void bench(perf_func_t f, uint64_t count, const char* operation) {
         }
     }
     int64_t delta = getTimeMs() - start;
-    printf("\n    Execution time %ld ms, CPS=%ld, %ld operations\n", delta, count * ((int64_t) 1000) / delta, count);
+    *cps = count * ((int64_t) 1000) / delta;
+    printf("\n    Execution time %ld ms, CPS=%d, %ld operations\n", delta, *cps, count);
 }
 
 static int compare_sort(const void* a, const void* b) {
@@ -89,43 +94,52 @@ static void reorder_test_data(void) {
 }
 
 int main(int argc, char** argv) {
-#ifdef TT
-    printf("Test TimesTen performance\n");
-#endif
-#ifdef PQ
-    printf("Test PosgreSql performance\n");
-#endif
+    printf("Test %s performance\n", DB_NAME);
     create_test_data();
     db_connect();
-    //execute_direct("drop table bench");
-    db_execute_direct(
 #ifdef TT
+    //db_execute_direct("drop table bench");
+#else
+    exit_on_error = false;
+    db_execute_direct("drop table if exists bench");
+    exit_on_error = true;
+#endif
+    db_execute_direct(
+            get_str(
             "CREATE TABLE bench ("
             "id TT_INT NOT NULL, "
             "value TT_INT NOT NULL, "
             "PRIMARY KEY (id) "
             ")"
-            " UNIQUE HASH ON (id) pages = 40000"
-#endif
-#ifdef PQ
+            " UNIQUE HASH ON (id) pages = 40000",
+
             "CREATE TABLE bench ("
             "id integer NOT NULL, "
             "value integer NOT NULL, "
             "CONSTRAINT bench_pk PRIMARY KEY (id) "
-            ")"
-#endif
+            ")",
+
+            "CREATE TABLE IF NOT EXISTS bench ("
+            "id integer NOT NULL, "
+            "value integer NOT NULL, "
+            "PRIMARY KEY (id)"
+            ") ENGINE = MEMORY"
+            )
             );
 
     db_prepare();
-    bench(insert_func, TEST_COUNT, "insert");
+    int32_t insert_cps, select_cps, update_cps, delete_cps;
+    bench(insert_func, TEST_COUNT, "insert", &insert_cps);
     reorder_test_data();
-    bench(select_func, TEST_COUNT, "select");
+    bench(select_func, TEST_COUNT, "select", &select_cps);
     reorder_test_data();
-    bench(update_func, TEST_COUNT, "update");
+    bench(update_func, TEST_COUNT, "update", &update_cps);
     reorder_test_data();
-    bench(delete_func, TEST_COUNT, "delete");
+    bench(delete_func, TEST_COUNT, "delete", &delete_cps);
     db_execute_direct("drop table bench");
     db_disconnect();
+    printf("%12s | %6s | %6s | %6s | %6s |\n", "Db Name", "insert", "select", "update", "delete");
+    printf("%12s | %6d | %6d | %6d | %6d |\n", DB_NAME, insert_cps, select_cps, update_cps, delete_cps);
     return 0;
 }
 

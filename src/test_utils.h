@@ -13,6 +13,20 @@ extern "C" {
         return val.tv_sec * ((int64_t) 1000) + val.tv_usec / 1000;
     }
 
+    static inline char* get_str(const char* tt_str, const char* pq_str, const char* my_str) {
+#ifdef TT
+        return const_cast<char*> (tt_str);
+#endif
+#ifdef PQ
+        return const_cast<char*> (pq_str);
+#endif
+#ifdef MY
+        return const_cast<char*> (my_str);
+#endif
+    }
+
+#define DB_NAME get_str("TimesTen", "PostgreSql", "MySql")
+
 #ifdef	__cplusplus
 }
 #endif
