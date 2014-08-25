@@ -25,8 +25,20 @@ SET(CMAKE_EXE_LINK_STATIC_CXX_FLAGS "${CMAKE_EXE_LINK_STATIC_CXX_FLAGS} -Wl,--gc
 ## build as debug version
 set(CMAKE_BUILD_TYPE Debug)
 
+set(${TARGET}_SRCS_COMMON
+    src/test_dao.cpp
+    src/test_dao.h
+    src/test_utils.h
+)
+
 set(${TARGET}_SRCS
+    ${${TARGET}_SRCS_COMMON}
     src/db_test.cpp
+)
+
+set(${TARGET}_SRCS_STMT
+    ${${TARGET}_SRCS_COMMON}
+    src/err_stmt.cpp
 )
 
 include_directories(
@@ -43,5 +55,12 @@ add_executable(${TARGET}_pq ${${TARGET}_SRCS})
 set_target_properties (${TARGET}_pq PROPERTIES COMPILE_DEFINITIONS "PQ")
 
 target_link_libraries(${TARGET}_pq
+    /usr/lib64/libodbc.so.2
+)
+
+add_executable(${TARGET}_pq_stmt ${${TARGET}_SRCS_STMT})
+set_target_properties (${TARGET}_pq_stmt PROPERTIES COMPILE_DEFINITIONS "PQ")
+
+target_link_libraries(${TARGET}_pq_stmt
     /usr/lib64/libodbc.so.2
 )
