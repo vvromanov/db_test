@@ -29,6 +29,7 @@ set(${TARGET}_SRCS_COMMON
     src/test_dao.cpp
     src/test_dao.h
     src/test_utils.h
+    src/test_utils.cpp
 )
 
 set(${TARGET}_SRCS
@@ -43,12 +44,14 @@ set(${TARGET}_SRCS_STMT
 
 include_directories(
     ${TT_DIR}/include
+    /usr/pgsql-9.3/include
 )
 
 add_executable(${TARGET}_tt ${${TARGET}_SRCS})
 set_target_properties (${TARGET}_tt PROPERTIES COMPILE_DEFINITIONS "TT")
 target_link_libraries(${TARGET}_tt
     ${TT_DIR}/lib/libtten.so
+    #${TT_DIR}/lib/libttclient.so 
 )
 
 add_executable(${TARGET}_my ${${TARGET}_SRCS})
@@ -69,4 +72,17 @@ set_target_properties (${TARGET}_pq_stmt PROPERTIES COMPILE_DEFINITIONS "PQ")
 
 target_link_libraries(${TARGET}_pq_stmt
     /usr/lib64/libodbc.so.2
+)
+
+add_executable(${TARGET}_libpq 
+    src/test_dao_libpq.cpp
+    src/test_dao.h
+    src/test_utils.h
+    src/test_utils.cpp
+    src/db_test.cpp
+)
+set_target_properties (${TARGET}_libpq PROPERTIES COMPILE_DEFINITIONS "LIBPQ")
+
+target_link_libraries(${TARGET}_libpq
+    /usr/pgsql-9.3/lib/libpq.so
 )

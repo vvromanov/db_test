@@ -5,15 +5,11 @@
 #include "test_dao.h"
 #include "test_utils.h"
 
-#ifdef TT
-#define TEST_COUNT 5000000
-#endif
-#ifdef PQ
+//#ifdef TT
+//#define TEST_COUNT 5000000
+//#else
 #define TEST_COUNT 500000
-#endif
-#ifdef MY
-#define TEST_COUNT 50000
-#endif
+//#endif
 
 typedef struct {
     int32_t id;
@@ -36,6 +32,15 @@ static void select_func(uint64_t index) {
     }
 }
 
+static void select1_func(uint64_t index) {
+    int32_t value;
+    db_select1(&value);
+    if (value != 1) {
+        printf("Invalid value selected!\n");
+        if (exit_on_error) exit(EXIT_FAILURE);
+    }
+}
+
 static void update_func(uint64_t index) {
     db_update(test_data[index].id, test_data[index].value + 1);
 }
@@ -49,6 +54,9 @@ typedef void(*perf_func_t) (uint64_t index);
 static void bench(perf_func_t f, uint64_t count, const char* operation, int32_t* cps) {
     int64_t start = getTimeMs();
     uint64_t step = count / 50;
+    if (step == 0) {
+        step = 1;
+    }
     printf("    %s ", operation);
     fflush(stdout);
     for (uint64_t i = 0; i < count; i++) {
@@ -98,7 +106,7 @@ int main(int argc, char** argv) {
     create_test_data();
     db_connect();
 #ifdef TT
-    //db_execute_direct("drop table bench");
+    db_execute_direct("drop table bench");
 #else
     exit_on_error = false;
     db_execute_direct("drop table if exists bench");
@@ -113,7 +121,7 @@ int main(int argc, char** argv) {
             ")"
             " UNIQUE HASH ON (id) pages = 40000",
 
-            "CREATE TABLE bench ("
+            "CREATE UNLOGGED TABLE bench ("
             "id integer NOT NULL, "
             "value integer NOT NULL, "
             "CONSTRAINT bench_pk PRIMARY KEY (id) "
@@ -128,7 +136,8 @@ int main(int argc, char** argv) {
             );
 
     db_prepare();
-    int32_t insert_cps, select_cps, update_cps, delete_cps;
+    int32_t insert_cps, select_cps, select1_cps, update_cps, delete_cps;
+    bench(select1_func, TEST_COUNT, "select1", &select1_cps);
     bench(insert_func, TEST_COUNT, "insert", &insert_cps);
     reorder_test_data();
     bench(select_func, TEST_COUNT, "select", &select_cps);
@@ -138,8 +147,8 @@ int main(int argc, char** argv) {
     bench(delete_func, TEST_COUNT, "delete", &delete_cps);
     db_execute_direct("drop table bench");
     db_disconnect();
-    printf("%12s | %6s | %6s | %6s | %6s |\n", "Db Name", "insert", "select", "update", "delete");
-    printf("%12s | %6d | %6d | %6d | %6d |\n", DB_NAME, insert_cps, select_cps, update_cps, delete_cps);
+    printf("%20s |%6s | %6s | %6s | %6s | %6s |\n", "Db Name", "select1", "insert", "select", "update", "delete");
+    printf("%20s | %6d | %6d | %6d | %6d | %6d |\n", DB_NAME, select1_cps, insert_cps, select_cps, update_cps, delete_cps);
     return 0;
 }
 
